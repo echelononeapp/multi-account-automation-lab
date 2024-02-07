@@ -20,6 +20,7 @@
 - [🧹 Cleanup the environment](#-cleanup-the-environment)
     - [Remove IAM roles from Managed Accounts](#remove-iam-roles-from-managed-accounts)
     - [Remove solution from Automation Account](#remove-solution-from-automation-account)
+- [FAQ](#faq)
 
 ## 🏆 Key Features
 
@@ -46,9 +47,9 @@ The three-step process outlined in the right image uses Step Functions to manage
 
 It's essential to have the AWS CLI installed and configured on your system and temporary credentials (STS tokens) or permanent credentials (access keys) set up for your accounts. Please refer to [AWS documentation](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-quickstart.html) for setup.
 
-This is a sample solution, that is meant to be expaned on. For demonstration purposes the Lambda function retrieving a list of accounts does not make an API call out of the box but simply returns a dictionary of account ids and aliases.
+This is a sample solution, that is meant to be expanded on. For demonstration purposes the Lambda function retrieving a list of accounts does not make an API call out of the box but simply returns a dictionary of account ids and aliases.
 
-Edit `line 30` in `./cloudformation/solution-stepfunction.yml` with your account details by replacing `return {"accounts":[]}` with something like
+Edit `line 30` in `./cloudformation/solution-stepfunction.yml` with your **managed account(s)** details by replacing `return {"accounts":[]}` with something like
 
 ```python
 return {"accounts":[{"id":"222222222222",'alias':"account a"},{"id":"1111111111111",'alias':"account b"}]}
@@ -144,6 +145,17 @@ Before you can run this command you will need to delete any objects in the S3 bu
 ```
 aws cloudformation delete-stack --stack-name automation-lab
 ```
+
+## FAQ
+
+> Q: Will this cost money?
+> A: All resources deployed fall into free tier usage limits, make sure you clean up the environment after use
+
+> Q: Is this usable in production?
+> A: The provided solution is meant as a starting point for your automation efforts. Production readiness would likely include updating the lambda function that provides accounts, as well as security hardening per individual required standards (e.g. CMK encryption of S3 bucket objects).
+
+> Q: How do I trigger this to regularly export the data?
+> A: You could schedule this step function to execute with the AWS EventBridge Scheduler.
 
 <div style="position:relative;color:#fff;height:100px;">
 <div style="background-size:cover;background-blend-mode:overlay;background-image: url('https://assets-global.website-files.com/62f05da360a799388d4a0d2e/651726b90f09a6cf0b26e07e_fotor-ai-20230929153311.jpeg');position:absolute;inset:0;" align="center">
