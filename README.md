@@ -88,7 +88,7 @@ Deploy the CloudFormation template with the below command (passing previous step
 ```
 aws cloudformation deploy \
   --template-file ./cloudformation/account-assume-role.yml \
-  --stack-name automation_lab_assume_role \
+  --stack-name automation-lab-assume-role \
   --parameter-overrides MgmtRoleArn="<RoleArn>" \
   --capabilities CAPABILITY_NAMED_IAM
 ```
