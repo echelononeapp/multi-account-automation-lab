@@ -62,7 +62,7 @@ The following instructions perform the required actions via the AWS CLI. Remembe
 
 #### Deploy solution to automation account
 
-> **Switch your AWS CLI identity using profiles/STS to the automation account**
+> ** ⚠️ Switch your AWS CLI identity using profiles/STS to the automation account**
 
 Deploy the CloudFormation template with the below command.
 
@@ -78,7 +78,7 @@ aws iam get-role --role-name CollectBucketsFunctionRole --query 'Role.Arn' --out
 
 #### Deploy IAM Roles to Managed Accounts
 
-> **Switch your AWS CLI identity using profiles/STS to each managed account**
+> ** ⚠️ Switch your AWS CLI identity using profiles/STS to each managed account**
 
 Deploy the CloudFormation template with the below command (passing previous step's role ARN).
 
@@ -88,7 +88,7 @@ aws cloudformation deploy --template-file ./cloudformation/account-assume-role.y
 
 ## 🚀 Run Stepfunction
 
-> **Switch your AWS CLI identity using profiles/STS to the automation account**
+> ** ⚠️ Switch your AWS CLI identity using profiles/STS to the automation account**
 
 Get the Stepfunction Arn with the following command -
 
@@ -129,7 +129,7 @@ aws s3 cp s3://<BucketName>/buckets.json -
 
 #### Remove IAM roles from Managed Accounts
 
-> **Switch your AWS CLI identity using profiles/STS to each managed account**
+> ** ⚠️ Switch your AWS CLI identity using profiles/STS to each managed account**
 
 ```
 aws cloudformation delete-stack --stack-name automation-lab-assume-role
@@ -137,7 +137,7 @@ aws cloudformation delete-stack --stack-name automation-lab-assume-role
 
 #### Remove solution from Automation Account
 
-> **Switch your AWS CLI identity using profiles/STS to the automation account**
+> ** ⚠️ Switch your AWS CLI identity using profiles/STS to the automation account**
 
 Before you can run this command you will need to delete any objects in the S3 bucket.
 
