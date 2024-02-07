@@ -83,8 +83,7 @@ aws iam get-role --role-name CollectBucketsFunctionRole --query 'Role.Arn' --out
 Deploy the CloudFormation template with the below command (passing previous step's role ARN).
 
 ```
-aws cloudformation deploy \
-  --template-file ./cloudformation/account-assume-role.yml --stack-name automation-lab-assume-role --parameter-overrides MgmtRoleArn="<RoleArn>" --capabilities CAPABILITY_NAMED_IAM
+aws cloudformation deploy --template-file ./cloudformation/account-assume-role.yml --stack-name automation-lab-assume-role --parameter-overrides MgmtRoleArn="<RoleArn>" --capabilities CAPABILITY_NAMED_IAM
 ```
 
 ## 🚀 Run Stepfunction
