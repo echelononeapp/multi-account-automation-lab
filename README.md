@@ -67,10 +67,7 @@ The following instructions perform the required actions via the AWS CLI. Remembe
 Deploy the CloudFormation template with the below command.
 
 ```
-aws cloudformation deploy \
-  --template-file ./cloudformation/solution-stepfunction.yml \
-  --stack-name automation-lab \
-  --capabilities CAPABILITY_NAMED_IAM
+aws cloudformation deploy --template-file ./cloudformation/solution-stepfunction.yml --stack-name automation-lab --capabilities CAPABILITY_NAMED_IAM
 ```
 
 Retrieve the lambda function execution IAM role arn that was created by the template by running the below command.
@@ -87,10 +84,7 @@ Deploy the CloudFormation template with the below command (passing previous step
 
 ```
 aws cloudformation deploy \
-  --template-file ./cloudformation/account-assume-role.yml \
-  --stack-name automation-lab-assume-role \
-  --parameter-overrides MgmtRoleArn="<RoleArn>" \
-  --capabilities CAPABILITY_NAMED_IAM
+  --template-file ./cloudformation/account-assume-role.yml --stack-name automation-lab-assume-role --parameter-overrides MgmtRoleArn="<RoleArn>" --capabilities CAPABILITY_NAMED_IAM
 ```
 
 ## 🚀 Run Stepfunction
