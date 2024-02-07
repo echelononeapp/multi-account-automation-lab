@@ -1,0 +1,29 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Assume role for managed accounts in example of multi account management using step functions"
+Parameters:
+  MgmtRoleArn:
+    Description: Management role arn that will assume the created role
+    Type: String
+Resources:
+  MgmtAccountAssumeRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      RoleName: "LabAccountAssumeRole"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              AWS: !Ref MgmtRoleArn
+            Action: "sts:AssumeRole"
+      Policies:
+        - PolicyName: "LambdaS3AccessPolicy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "s3:ListAllMyBuckets"
+                  - "s3:GetBucketLocation"
+                Resource:
+                  - "*"

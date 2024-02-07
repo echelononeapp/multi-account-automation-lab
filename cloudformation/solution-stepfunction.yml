@@ -1,0 +1,210 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "An example of multi account management using step functions"
+Resources:
+  DataCollectionBucket:
+    Type: AWS::S3::Bucket
+
+  CollectAccountsFunctionLambdaExecutionRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      RoleName: "CollectAccountsFunctionRole"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service: "lambda.amazonaws.com"
+            Action: "sts:AssumeRole"
+
+  CollectAccountsFunction:
+    Type: "AWS::Lambda::Function"
+    Properties:
+      Handler: "index.lambda_handler"
+      Role: !GetAtt [CollectAccountsFunctionLambdaExecutionRole, Arn]
+      Code:
+        ZipFile: |
+          import json
+
+          def lambda_handler(event, context):
+              # promote to production -- update to list accounts from organizations
+              return {"accounts":[]}
+
+      Runtime: "python3.12"
+      Timeout: "10"
+
+  CollectBucketsFunctionLambdaExecutionRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      RoleName: "CollectBucketsFunctionRole"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service: "lambda.amazonaws.com"
+            Action: "sts:AssumeRole"
+      Policies:
+        - PolicyName: "LambdaS3AccessPolicy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "sts:AssumeRole"
+                Resource:
+                  - "*"
+
+  CollectBucketsFunction:
+    Type: "AWS::Lambda::Function"
+    Properties:
+      Handler: "index.lambda_handler"
+      Role: !GetAtt [CollectBucketsFunctionLambdaExecutionRole, Arn]
+      Code:
+        ZipFile: |
+          import json
+          import boto3 
+
+          def lambda_handler(event, context):
+              # Create an STS client object
+              sts_client = boto3.client('sts')
+              
+              # Assume the role and get temporary credentials
+              assumed_role_object = sts_client.assume_role(
+                  RoleArn="arn:aws:iam::{}:role/LabAccountAssumeRole".format(event["id"]),
+                  RoleSessionName="AssumeRoleSession1"
+              )
+              
+              # Extract the temporary credentials from the assumed role object
+              credentials = assumed_role_object['Credentials']
+              
+              # Create a new session with the temporary credentials
+              new_session = boto3.Session(
+                  aws_access_key_id=credentials['AccessKeyId'],
+                  aws_secret_access_key=credentials['SecretAccessKey'],
+                  aws_session_token=credentials['SessionToken']
+              )
+              
+              # Now you can use the new session to make AWS service calls
+              s3 = new_session.client('s3')
+              buckets = s3.list_buckets()["Buckets"]
+              for b in buckets:
+                  b["AccountAlias"] = event["alias"]
+              return {
+                'buckets':json.loads(json.dumps(buckets,default=str))
+              }
+
+      Runtime: "python3.12"
+      Timeout: "120"
+
+  StatesExecutionRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - !Sub states.${AWS::Region}.amazonaws.com
+            Action: "sts:AssumeRole"
+      Path: "/"
+      Policies:
+        - PolicyName: StatesExecutionPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "lambda:InvokeFunction"
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - "s3:putObject"
+                Resource:
+                  - Fn::Join:
+                      - ""
+                      - - "arn:aws:s3:::"
+                        - !Ref DataCollectionBucket
+                  - Fn::Join:
+                      - ""
+                      - - "arn:aws:s3:::"
+                        - !Ref DataCollectionBucket
+                        - "/*"
+
+  CollectorStateMachine:
+    Type: "AWS::StepFunctions::StateMachine"
+    Properties:
+      DefinitionString: !Sub
+        - |-
+          {
+            "Comment": "An example of multi account management using step functions",
+            "StartAt": "Get Accounts",
+            "TimeoutSeconds": 3600,
+            "States": {
+              "Get Accounts": {
+                "Type": "Task",
+                "Resource": "arn:aws:states:::lambda:invoke",
+                "Parameters": {
+                  "FunctionName": "${GetAccountsFunction}"
+                },
+                "Next": "Iterate over Accounts",
+                "OutputPath": "$.Payload"
+              },
+              "Iterate over Accounts": {
+                "Comment": "Start multiple executions of batch job depending on pre-processed data",
+                "Type": "Map",
+                "MaxConcurrency": 3,
+                "ItemsPath": "$.accounts",
+                "Iterator": {
+                  "StartAt": "Collect Buckets",
+                  "States": {
+                    "Collect Buckets": {
+                      "Type": "Task",
+                      "Resource": "arn:aws:states:::lambda:invoke",
+                      "Parameters": {
+                        "Payload.$": "$",
+                        "FunctionName": "${GetBucketsFunction}"
+                      },
+                      "Retry": [
+                        {
+                          "ErrorEquals": [
+                            "Lambda.ServiceException",
+                            "Lambda.AWSLambdaException",
+                            "Lambda.SdkClientException",
+                            "Lambda.TooManyRequestsException"
+                          ],
+                          "IntervalSeconds": 1,
+                          "MaxAttempts": 3,
+                          "BackoffRate": 2
+                        }
+                      ],
+                      "End": true,
+                      "OutputPath": "$.Payload.buckets"
+                    }
+                  }
+                },
+                "Next": "Send Bucket Data to S3",
+                "ResultSelector": {
+                  "data.$": "$[*][*]"
+                }
+              },
+              "Send Bucket Data to S3": {
+                "Type": "Task",
+                "End": true,
+                "Parameters": {
+                  "Body": {
+                    "data.$": "$.data"
+                  },
+                  "Bucket": "${BucketName}",
+                  "Key": "buckets.json"
+                },
+                "Resource": "arn:aws:states:::aws-sdk:s3:putObject"
+              }
+            }
+          }
+        - {
+            BucketName: !Ref DataCollectionBucket,
+            GetBucketsFunction: !GetAtt [CollectBucketsFunction, Arn],
+            GetAccountsFunction: !GetAtt [CollectAccountsFunction, Arn],
+          }
+      RoleArn: !GetAtt [StatesExecutionRole, Arn]
